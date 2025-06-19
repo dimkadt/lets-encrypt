@@ -53,7 +53,7 @@ function SSLManager(config) {
         SETTINGS_PATH = "opt/letsencrypt/settings",
         DECREASE_UPDATE_DAYS = 10,
         REMOVE_UPDATE_DAYS = 90,
-        SUPPORT_EMAIL = "paas.support@virtuozzo.com",
+        SUPPORT_EMAIL = "",
         DATE_FORMAT = "yyyy-MM-dd HH:mm:ss",
         DOMAINS_SEP = " ",
         CONFIGURE = "configure",
@@ -208,7 +208,7 @@ function SSLManager(config) {
             me.updateSettingsValue(UPDATE_DISABLED, true);
 
             return me.sendEmail("Disable " + LE_TEXT, EMAIL_BODY_PATH, {
-                SUPPORT_EMAIL : SUPPORT_EMAIL,
+                SUPPORT_EMAIL : me.getSupportEmail(),
                 DAYS: String(REMOVE_UPDATE_DAYS),
                 ACTION: "Auto-update retries were disabled."
             });
@@ -221,7 +221,7 @@ function SSLManager(config) {
             ]);
 
             return me.sendEmail("Decrease " + LE_TEXT, EMAIL_BODY_PATH, {
-                SUPPORT_EMAIL : SUPPORT_EMAIL,
+                SUPPORT_EMAIL : me.getSupportEmail(),
                 DAYS: String(DECREASE_UPDATE_DAYS),
                 ACTION: "The frequency of auto-update retries was decreased to once per month."
             });
@@ -1697,7 +1697,7 @@ function SSLManager(config) {
         }
 
         return me.sendEmail("Error", "html/update-error.html", {
-            SUPPORT_EMAIL : SUPPORT_EMAIL,
+            SUPPORT_EMAIL : me.getSupportEmail(),
             ENV_DOMAIN: config.envDomain,
             RESP : resp || "",
             TYPE: isUpdate ? "update" : "installation",
@@ -1781,6 +1781,27 @@ function SSLManager(config) {
 
     me.replaceText = function (text, values) {
         return new StrSubstitutor(values, "${", "}").replace(text);
+    };
+
+    me.getSupportEmail = function () {
+        if (!SUPPORT_EMAIL) {
+            var resp = api.dev.scripting.Eval("settings", session, "GetSupportEmail");
+            resp = resp.response || resp;
+
+            if (resp.result == 0 ) {
+                SUPPORT_EMAIL = resp.email;
+            } else {
+                var versionResp = getPlatformVersion();
+
+                if (compareVersions(versionResp.version, "8.14.1") >= 0) {
+                    log("[WARNING]: cannot get support email: " + resp);
+                }
+
+                SUPPORT_EMAIL = "paas.support@virtuozzo.com";
+            }
+        }
+
+        return SUPPORT_EMAIL;
     };
 
     function NodeManager(envName, nodeId, baseDir, logPath) {
